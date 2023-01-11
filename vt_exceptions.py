@@ -1,0 +1,7 @@
+
+
+class VTAExceptions(Exception):
+    pass
+
+
+
