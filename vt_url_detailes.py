@@ -3,20 +3,35 @@ import datetime
 
 class VTurlDetails:
 
-    def __init__(self, last_analysis_date: datetime, harmless: int, malicious: int, suspicious: int, undetected: int):
+    def __init__(self, last_analysis_date: int, harmless: int, malicious: int, suspicious: int, undetected: int,
+                 url: str):
+        self._url = url
         self._last_analysis_date = last_analysis_date
         self._undetected = undetected  # harmless-malicious-suspicious>20 - good
         self._suspicious = suspicious
         self._malicious = malicious
         self._harmless = harmless
+        self._result = 'clean' if (self._harmless - self._malicious - self._suspicious) > 20 else 'malicious'
 
+    def __str__(self):
+        return f"URL: {self._url}\n" \
+               f"Last analysis date: {self._last_analysis_date}\n" \
+               f"Harmless: {self._harmless}\n" \
+               f"Malicious: {self._malicious}\n" \
+               f"Suspicious: {self._suspicious}\n" \
+               f"Undetected: {self._undetected}\n" \
+               f"Result: {self._result}"
+
+    def __repr__(self):
+        return f"URL: {self._url}\n" \
+               f"Result: {self._result}"
 
     @property
     def last_analysis_date(self):
         return self._last_analysis_date
     
     @last_analysis_date.setter
-    def last_analysis_date(self, analysis_date: datetime):
+    def last_analysis_date(self, analysis_date: int):
         self._last_analysis_date = analysis_date
 
     @property
