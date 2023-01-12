@@ -1,4 +1,5 @@
 import base64, json, os, datetime, requests
+import time
 from threading import Lock
 from vt_url_detailes import VTurlDetails
 from concurrent.futures import ThreadPoolExecutor
@@ -68,25 +69,72 @@ class VTAnalyzer:
         # # response = requests.get(url, headers=headers)
         # return self._cache[url]
 
-    def cache_found_url(self, url: str):
+    def chack_day_scan(self,last_analysis_date, day):
+        ts = last_analysis_date
+        lad = datetime.datetime.utcfromtimestamp(ts).strftime('%Y-%m-%d %H:%M:%S')
+        days_analysis = datetime.datetime.utcnow() - datetime.datetime.strptime(lad, '%Y-%m-%d %H:%M:%S')
+        return day > days_analysis
+
+
+    def cache_found_url(self, url: str, day_scan: datetime.timedelta):
         if url in self._cache:
-            pass
+            if not self.chack_day_scan(self._cache[url].last_analysis_date, day_scan):
+                self.scan_url(url)
+            return True
+        return False
 
-    def scan_url(self, url):
+    def scan_url_requests(self, url):
+        """
+        send a post request for new scan
+        """
         url = "https://www.virustotal.com/api/v3/urls"
-
         # payload = "url=https://www.clalit.co.il/"
         response = requests.post(url, data=f"url={url}", headers=self._scan_header)
+
+    def scan_url(self, url):
+        """
+        function that scan -> post and get reputation about url
+        """
+        self.scan_url_requests(url)
+
+        # sending requests until the analysis is finished
+        while True:
+            response = self.get_reputation_for_single_url(url)
+            if response.status_code == 200:
+                break
+            time.sleep(0.1)
+
+        self.add_to_cache(response.json(), url)
+        return self._cache[url]
 
     def reputation_flow(self, url: str, scan: bool, day_scan: datetime.timedelta):
         # force scan
         if scan:
-            self.scan_url(url)
+            return self.scan_url(url)
+            # self.scan_url_requests(url)
+            #
+            # # sending requests until the analysis is finished
+            # while True:
+            #     response = self.get_reputation_for_single_url(url)
+            #     if response.status_code == 200:
+            #         break
+            #     time.sleep(0.1)
+            #
+            # self.add_to_cache(response.json(), url)
+            # return self._cache[url]
 
-            while True:
-                response = self.get_reputation_for_single_url(url)
+        else:
+            if self.cache_found_url(url, day_scan):
+                return self._cache[url]
 
-        url_id = self._url_to_base64(url)
+            # TODO: do the get reputation and if the error is 404 I need to scan and then send another request
+            response = self.get_reputation_for_single_url(url)
+            # if there are an error it will return to futures the description
+            if not self.chack_status_code(response):
+                return errors_dict.errors[response.json()['error']['code']]
+
+            self.add_to_cache(response.json(), url)
+            return self._cache[url]
 
 
     @property
