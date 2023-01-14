@@ -1,4 +1,5 @@
 import os
+import json
 import argparse
 import pickle
 from vt_class import VTAnalyzer, UrlUserSelection
@@ -10,15 +11,12 @@ from vt_class import VTAnalyzer, UrlUserSelection
 
 if __name__ == '__main__':
 
+    cache = None
     # check whether this is the first time you run the app
-    # if this is the first time - create a new class
-    if not os.path.exists('db\\check.pickle'):
-        vt_a = VTAnalyzer()
-    else:
-        # this is not the first time - we already have a DB
-        # with data from the previous runs
-        with open('db\\check.pickle', 'rb') as fh:
-            vt_a = pickle.load(fh)
+    # if this is not the first time - load the pickle
+    if os.path.exists('db/check.pickle'):
+        with open('db/check.pickle', 'rb') as fh:
+            cache = pickle.load(fh)
 
     parser = argparse.ArgumentParser(
         prog='VirusTotal scanner',
@@ -36,13 +34,15 @@ if __name__ == '__main__':
     args = parser.parse_args()
     print(args.url, args.scan, args.apikey, args.day)
 
-    url_user = UrlUserSelection(args.url, args.scan, args.apikey, args.day)
+    if args.day is None:
+        args.day = 182
+    url_user = UrlUserSelection(cache, args.url, args.scan, args.apikey, args.day)
     url_user.run()
 
     # before exiting the program, persist the current state
     # of te system in the file, so next time it will be loaded
-    with open('db\\check.pickle', 'wb') as fh:
-        pickle.dump(vt_a, fh)
+    with open('db/check.pickle', 'wb') as fh:
+        pickle.dump(url_user.cache, fh)
 
 
 
